@@ -18,7 +18,7 @@ class Home extends BaseController
     {
         return view('contact');
     }
-
+//
     public function dashboard()
     {
         $session = session();
