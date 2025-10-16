@@ -12,7 +12,7 @@ class Auth extends BaseController
             return redirect()->to(base_url('dashboard'));
         }
 
-        return view('login');
+        return view('Auth/login');
     }
 
     public function attempt()
@@ -50,7 +50,7 @@ class Auth extends BaseController
             return redirect()->to(base_url('dashboard'));
         }
 
-        return view('register');
+        return view('Auth/register');
     }
 
     public function store()
