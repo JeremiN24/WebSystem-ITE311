@@ -2,14 +2,16 @@
 
 namespace App\Controllers;
 
+use App\Models\UserModel;
+
 class Auth extends BaseController
 {
-
     public function login()
     {
         $session = session();
         if ($session->get('isLoggedIn')) {
-            return redirect()->to(base_url('dashboard'));
+            // Redirect based on role if already logged in
+            return $this->redirectByRole($session->get('userRole'));
         }
 
         return view('Auth/login');
@@ -21,16 +23,21 @@ class Auth extends BaseController
         $email = trim((string) $request->getPost('email'));
         $password = (string) $request->getPost('password');
 
-        // Try database user first
-        $userModel = new \App\Models\UserModel();
+        $userModel = new UserModel();
         $user = $userModel->where('email', $email)->first();
+
         if ($user && password_verify($password, $user['password'])) {
             $session = session();
             $session->set([
                 'isLoggedIn' => true,
-                'userEmail' => $email,
+                'userId'     => $user['id'],
+                'userEmail'  => $user['email'],
+                'userName'   => $user['name'],
+                'userRole'   => $user['role'], // store role
             ]);
-            return redirect()->to(base_url('dashboard'));
+
+            // Redirect based on user role
+            return $this->redirectByRole($user['role']);
         }
 
         return redirect()->back()->with('login_error', 'Invalid credentials');
@@ -47,7 +54,7 @@ class Auth extends BaseController
     {
         $session = session();
         if ($session->get('isLoggedIn')) {
-            return redirect()->to(base_url('dashboard'));
+            return $this->redirectByRole($session->get('userRole'));
         }
 
         return view('Auth/register');
@@ -72,7 +79,7 @@ class Auth extends BaseController
             return redirect()->back()->withInput()->with('register_error', 'Passwords do not match.');
         }
 
-        $userModel = new \App\Models\UserModel();
+        $userModel = new UserModel();
 
         // Check for existing email
         if ($userModel->where('email', $email)->first()) {
@@ -82,9 +89,9 @@ class Auth extends BaseController
         $passwordHash = password_hash($password, PASSWORD_DEFAULT);
 
         $userId = $userModel->insert([
-            'name' => $name,
-            'email' => $email,
-            'role' => 'student',
+            'name'     => $name,
+            'email'    => $email,
+            'role'     => 'student', // default role for new users
             'password' => $passwordHash,
         ], true);
 
@@ -92,9 +99,25 @@ class Auth extends BaseController
             return redirect()->back()->withInput()->with('register_error', 'Registration failed.');
         }
 
-        // Redirect to login with success message
         return redirect()
             ->to(base_url('login'))
             ->with('register_success', 'Account created successfully. Please log in.');
+    }
+
+    /**
+     * Redirect user based on their role
+     */
+    private function redirectByRole($role)
+    {
+        switch ($role) {
+            case 'student':
+                return redirect()->to(base_url('announcements'));
+            case 'teacher':
+                return redirect()->to(base_url('teacher/dashboard'));
+            case 'admin':
+                return redirect()->to(base_url('admin/dashboard'));
+            default:
+                return redirect()->to(base_url('login'));
+        }
     }
 }
